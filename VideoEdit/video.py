@@ -4,9 +4,10 @@ from moviepy.video.fx import Crop
 from moviepy.video.fx import CrossFadeIn, CrossFadeOut
 import os
 from pathlib import Path
+from .subt import Subt
 
 class VideoEdit:
-    def __init__(self, video_background, tts_audio, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3):
+    def __init__(self, video_background, tts_audio, font, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
         """
         Initialize VideoEdit with necessary components
         
@@ -22,10 +23,12 @@ class VideoEdit:
         self.tts_audio = tts_audio
         self.music_audio = music_audio
         self.image_overlay = image_overlay
-        self.subtitles_path = subtitles_path
+        self.subtitles_path = str(Path(subtitles_path)) if subtitles_path else None
         self.output_size = (1080, 1920)  # Default to vertical video format
         self.overlay_duration = overlay_duration
         self.fade_duration = 0.5  # Duration of fade in/out effect in seconds
+        self.openai_api_key = openai_api_key
+        self.font = font
         
     def process_background(self, clip, duration):
         """
@@ -83,24 +86,80 @@ class VideoEdit:
             
         return img
 
+
     def create_subtitle_clips(self, text_color="white", duration=None):
-        """Create subtitle clips if subtitles are provided"""
-        if not self.subtitles_path:
-            return None
-            
-        generator = lambda txt: TextClip(
-            txt,
-            font="Arial",
-            fontsize=100,
-            color=text_color,
-            stroke_color="black",
-            stroke_width=5,
-        )
+        print(f"Generando subtítulos desde: {self.subtitles_path}")
+    
+    # Verificar que existe el directorio fonts y el archivo de fuente
+        #print(f"[DEBUG] Buscando fuente en: {font_path}")
+    
+        #if not os.path.exists(font_path):
+        #    print(f"[ERROR] No se encontró el archivo de fuente en: {font_path}")
+        #    return None
+
+        #print(f"[DEBUG] Archivo de fuente encontrado, tamaño: {os.path.getsize(font_path)} bytes")
+    
+        try:
+
+            generator = lambda text: TextClip(font=self.font, text=text,
+                                        font_size=90, color=text_color, text_align='center',      
+                                        horizontal_align='center', 
+                                        vertical_align='center',
+                                        margin=(0, 700))   
         
-        subtitles = SubtitlesClip(self.subtitles_path, generator)
-        if duration is not None:
-            subtitles = subtitles.with_duration(duration)
-        return subtitles
+            subtitles = SubtitlesClip(
+                    self.subtitles_path,
+                    make_textclip=generator,
+                    encoding='utf-8'  # Importante para caracteres especiales
+                )
+        
+            if duration is not None:
+                subtitles = subtitles.with_duration(duration)
+        
+            return subtitles
+        
+        except Exception as e:
+            print(f"Error al crear clips de subtítulos: {str(e)}")
+            import traceback
+            print("Traceback completo:")
+            print(traceback.format_exc())
+            return None
+
+    def generate_subtitles(self, output_path=None):
+        """Generate subtitles with more robust path handling"""
+        if not self.openai_api_key:
+            raise ValueError("Se requiere OpenAI API key para generar subtítulos")
+        
+        try:
+            # Determinar la ruta de salida
+            if output_path is None:
+                # Crear un directorio de subtítulos en el mismo directorio que el video
+                base_dir = Path(self.video_background).parent
+                subtitles_dir = base_dir / "subtitles"
+                subtitles_dir.mkdir(parents=True, exist_ok=True)
+                output_path = subtitles_dir / f"{Path(self.tts_audio).stem}.srt"
+            else:
+                output_path = Path(output_path)
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            print(f"Generando subtítulos en: {output_path}")
+            
+            # Generar subtítulos
+            subt = Subt(api_key=self.openai_api_key)
+            self.subtitles_path = subt.generate_subtitles_whisper(
+                audio_path=self.tts_audio,
+                output_path=str(output_path)
+            )
+            
+            # Verificar que el archivo se creó
+            if not os.path.exists(self.subtitles_path):
+                raise FileNotFoundError(f"No se pudo generar el archivo de subtítulos en {self.subtitles_path}")
+                
+            return self.subtitles_path
+            
+        except Exception as e:
+            print(f"Error al generar subtítulos: {str(e)}")
+            raise
 
     def mix_audio(self, tts_duration):
         """
@@ -115,7 +174,7 @@ class VideoEdit:
             bg_music = AudioFileClip(self.music_audio)
             # Create a custom frame function that multiplies the original audio by 0.3
             original_frame_func = bg_music.frame_function
-            bg_music.frame_function = lambda t: original_frame_func(t) * 0.3
+            bg_music.frame_function = lambda t: original_frame_func(t) * 0.1
         
             # Loop background music if shorter than TTS
             if bg_music.duration < tts_duration:
@@ -133,55 +192,62 @@ class VideoEdit:
         
         return final_audio
 
-    def create_video(self, output_path="output.mp4"):
+    def create_video(self, output_path="output.mp4", generate_subs=True):
         """Create the final video with all components"""
         try:
-            output_dir = os.path.dirname(output_path)
-            if output_dir:
-                os.makedirs(output_dir, exist_ok=True)
+            print("[DEBUG] Iniciando creación de video...")
+            output_path = Path(output_path)
+            output_dir = output_path.parent
+            output_dir.mkdir(parents=True, exist_ok=True)
 
-            output_path = str(Path(output_path))
-            
-            # Get TTS duration first as it determines final video length
+            print(f"[DEBUG] Generando subtítulos: {generate_subs}")
+            if generate_subs:
+                print("[DEBUG] Intentando generar subtítulos...")
+                srt_path = output_path.with_suffix('.srt')
+                print(f"[DEBUG] Ruta de subtítulos: {srt_path}")
+                self.generate_subtitles(output_path=srt_path)
+        
+            print("[DEBUG] Procesando audio TTS...")
             tts_audio = AudioFileClip(self.tts_audio)
             tts_duration = tts_audio.duration
-            
-            # Load and process background video
+        
+            print("[DEBUG] Procesando video de fondo...")
             video = VideoFileClip(self.video_background)
             video = self.process_background(video, tts_duration)
-            
-            # Create list of video components
+        
             video_components = [video]
-            
-            # Add image overlay if provided
+        
             overlay = self.create_overlay(tts_duration)
             if overlay:
+                print("[DEBUG] Añadiendo overlay...")
                 video_components.append(overlay)
-            
-            # Add subtitles if provided
-            subtitles = self.create_subtitle_clips(duration=tts_duration)
-            if subtitles:
-                subtitles = subtitles.with_position(('center', 'bottom'))
-                video_components.append(subtitles)
-            
-            # Compose video and set duration after creation
+        
+            if self.subtitles_path and os.path.exists(self.subtitles_path):
+                print(f"[DEBUG] Creando clips de subtítulos desde: {self.subtitles_path}")
+                subtitles = self.create_subtitle_clips(duration=tts_duration)
+                if subtitles:
+                    print("[DEBUG] Añadiendo subtítulos al video...")
+                    subtitles = subtitles.with_position(('center', 'bottom'))
+                    video_components.append(subtitles)
+        
+            print("[DEBUG] Componiendo video final...")
             final_video = CompositeVideoClip(video_components, size=self.output_size)
             final_video = final_video.with_duration(tts_duration)
-            
-            # Add audio
+        
+            print("[DEBUG] Mezclando audio...")
             final_audio = self.mix_audio(tts_duration)
             final_video = final_video.with_audio(final_audio)
-            
-            # Write final video
+        
+            print(f"[DEBUG] Escribiendo video final en: {output_path}")
             final_video.write_videofile(
-                output_path,
+                str(output_path),
                 fps=24,
-                threads=32,
+                threads=64,
                 codec='libx264',
                 audio_codec='aac',
             )
-            
-            # Close all clips to free up resources
+        
+        # Cleanup
             final_video.close()
             video.close()
             tts_audio.close()
