@@ -27,18 +27,20 @@ class TextGen:
 
 class ClientTTS:
     """ Class for generating TTS using OpenAI API """
-    def __init__(self, API_KEY, text, voice_type):
+    def __init__(self, API_KEY, text, voice_type, default_output_dir=None):
+        from pathlib import Path
 
         self.API_KEY = API_KEY
         self.text = text
         self.voice_type = voice_type
+        self.default_output_dir = Path(default_output_dir) if default_output_dir else Path(__file__).parent
     
     def generateTTS(self, output_path=None):
         from openai import OpenAI
         from pathlib import Path
 
         if output_path is None:
-            output_path = Path(__file__).parent / "speech.mp3"
+            output_path = self.default_output_dir / "speech.mp3"
         else:
             output_path = Path(output_path)
 
