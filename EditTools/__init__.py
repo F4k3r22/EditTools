@@ -1,4 +1,4 @@
 from .GenAPI import *
 from .ImageEdit import *
-from .VideoEdit import *
+from .VideoEdit.video import *
 from .prompts import *

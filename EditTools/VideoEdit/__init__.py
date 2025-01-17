@@ -1,2 +1,2 @@
-from .video import VideoEdit
+from .video import VideoEditReddit
 from .subt import Subt
