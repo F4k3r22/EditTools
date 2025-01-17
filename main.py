@@ -1,10 +1,10 @@
-from GenAPI.GenAPI import TextGen, ClientTTS
-from prompts import SYSTEM_PROMPT
+from EditTools.GenAPI import TextGen, ClientTTS
+from EditTools import SYSTEM_PROMPT_REDDIT
 from text import Text_input_test
-from ImageEdit.edit import EditImage
+from EditTools.ImageEdit import EditImage
 import json
 from testapi import API_KEY
-from VideoEdit.video import VideoEdit
+from EditTools.VideoEdit.video import VideoEditReddit
 import os
 from pathlib import Path
 
@@ -18,7 +18,7 @@ os.makedirs(BASE_DIR / "output", exist_ok=True)
 print("Test en estas clases y el generador de titulos")
 
 # Test TextGen
-Gen = TextGen(API_KEY, SYSTEM_PROMPT, Text_input_test)
+Gen = TextGen(API_KEY, SYSTEM_PROMPT_REDDIT, Text_input_test)
 response = Gen.generate()
 print(response.choices[0].message.content)
 
@@ -74,7 +74,7 @@ if not os.path.exists(tts_audio):
     raise FileNotFoundError(f"Audio TTS no encontrado en: {tts_audio}")
 
 # Crear el editor de video
-video_editor = VideoEdit(
+video_editor = VideoEditReddit(
     video_background=background_video,
     tts_audio=tts_audio,
     font=fontpath,
@@ -86,7 +86,7 @@ video_editor = VideoEdit(
 )
 
 # Generar el video final
-output_video_path = str(BASE_DIR / "Videos" / "video5.mp4")
+output_video_path = str(BASE_DIR / "Videos" / "video8.mp4")
 video_editor.create_video(output_video_path)
 
 print(f"Video generado en {output_video_path}")
