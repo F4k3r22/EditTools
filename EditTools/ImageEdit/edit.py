@@ -1,15 +1,19 @@
 from PIL import Image, ImageDraw, ImageFont
 import os
 
-def EditImage(nickname, titulo_principal, ruta_imagen=None):
+def EditImage(nickname, titulo_principal, input_image=None, output_path=None):
+    """ El Output es para especificar la ruta de salida, el input no importa mucho ya trae imagen por defecto """
     # Abrir la imagen existente
     current_dir = os.path.dirname(os.path.abspath(__file__))
 
-    if ruta_imagen is None:
-        ruta_imagen = os.path.join(current_dir, 'input.png')
+    if input_image is None:
+        input_image = os.path.join(current_dir, 'input.png')
+    
+    if output_path is None:
+        output_path = os.path.join(current_dir, 'output.png')
 
     try:
-        imagen = Image.open(ruta_imagen)
+        imagen = Image.open(input_image)
     except:
         print("Error al cargar la imagen, usando imagen por defecto")
         imagen = Image.open(os.path.join(current_dir, 'input.png'))
@@ -65,10 +69,19 @@ def EditImage(nickname, titulo_principal, ruta_imagen=None):
         y += espacio_entre_lineas
     
     # Guardar la imagen editada
-    imagen.save('imagen_editada.png')
+    if output_path is None:
+        output_path = os.path.join(current_dir, 'output.png')
+    
+    try:
+        imagen.save(output_path)
+        print(f"Imagen guardada exitosamente en: {output_path}")
+    except Exception as e:
+        print(f"Error al guardar la imagen: {str(e)}")
 
-# Ejemplo de uso
-#ruta_imagen = "input.png"  # Reemplaza con la ruta de tu imagen
-#nickname = "chicodereddit"
-#titulo = "Titulo de ejemplo que se espera"
-#EditImage(ruta_imagen, nickname, titulo)
+# Ejemplo de uso correcto:
+# nickname = "chicodereddit"
+# titulo = "Titulo de ejemplo que se espera"
+# EditImage(nickname=nickname, 
+#          titulo_principal=titulo,
+#          input_image="input.png",
+#          output_path="output.png")

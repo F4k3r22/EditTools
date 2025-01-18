@@ -43,6 +43,9 @@ class ClientTTS:
             output_path = self.default_output_dir / "speech.mp3"
         else:
             output_path = Path(output_path)
+        
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
 
         client = OpenAI(api_key=self.API_KEY)
 
@@ -55,9 +58,10 @@ class ClientTTS:
             response.stream_to_file(output_path)
             
             # Alternativa usando with_streaming_response si stream_to_file falla
-            # with open(output_path, 'wb') as f:
-            #     for chunk in response.with_streaming_response.iter_bytes():
-            #         f.write(chunk)
+            #with open(output_path, 'wb') as f:
+            #    for chunk in response.with_streaming_response.iter_bytes():
+            #        f.write(chunk)
+                    
             return output_path        
         except Exception as e:
             print(f"Error en el ClientTTS: {str(e)}")
