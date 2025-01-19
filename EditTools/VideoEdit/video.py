@@ -261,6 +261,14 @@ class VideoEditReddit:
             tts_audio.close()
             if self.music_audio:
                 final_audio.close()
+
+            temp_audio_file = str(output_path).replace('.mp4', 'TEMP_MPY_wvf_snd.mp4')
+            if os.path.exists(temp_audio_file):
+                try:
+                    os.remove(temp_audio_file)
+                    print(f"[DEBUG] Archivo temporal de audio eliminado: {temp_audio_file}")
+                except Exception as e:
+                    print(f"[WARNING] No se pudo eliminar el archivo temporal de audio: {str(e)}")
                 
         except Exception as e:
             print(f"Error creating video: {str(e)}")
