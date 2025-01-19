@@ -111,7 +111,9 @@ class VideoEditReddit:
                                         horizontal_align='center', 
                                         vertical_align='center',
                                         margin=(0, 700),
-                                        interline=4)   
+                                        interline=4, 
+                                        stroke_color='black',  # Color del contorno
+                                        stroke_width=2)   
         
             subtitles = SubtitlesClip(
                     self.subtitles_path,
