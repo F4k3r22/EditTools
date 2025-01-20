@@ -5,6 +5,8 @@ from moviepy.video.fx import CrossFadeIn, CrossFadeOut
 import os
 from pathlib import Path
 from .subt import Subt
+import gc
+import psutil
 
 class VideoEditReddit:
     def __init__(self, video_background, tts_audio, font, font_color="white", music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
@@ -169,6 +171,34 @@ class VideoEditReddit:
             print(f"Error al generar subtítulos: {str(e)}")
             raise
 
+    def __del__(self):
+        """Destructor de la clase para limpieza de memoria"""
+        self.cleanup()
+
+    def cleanup(self):
+        """Método para limpiar recursos y liberar memoria"""
+        try:
+            # Limpieza de atributos grandes
+            attributes_to_clean = [
+                'video_background', 'tts_audio', 'music_audio', 
+                'image_overlay', 'subtitles_path', 'font'
+            ]
+            
+            for attr in attributes_to_clean:
+                if hasattr(self, attr):
+                    setattr(self, attr, None)
+
+            # Forzar recolección de basura
+            gc.collect()
+
+            # Liberar memoria del sistema (opcional)
+            if psutil.POSIX:  # Solo en sistemas POSIX (Linux/Unix)
+                import resource
+                resource.setrlimit(resource.RLIMIT_AS, (resource.RLIM_CUR, resource.RLIM_MAX))
+
+        except Exception as e:
+            print(f"Error durante la limpieza: {str(e)}")
+
     def mix_audio(self, tts_duration):
         """
         Mix TTS and background music if provided
@@ -266,6 +296,8 @@ class VideoEditReddit:
             if os.path.exists(temp_audio_file):
                 try:
                     os.remove(temp_audio_file)
+                    self.cleanup_temp_files(output_path)
+                    self.cleanup()  # Llamar a la limpieza explícitamente
                     print(f"[DEBUG] Archivo temporal de audio eliminado: {temp_audio_file}")
                 except Exception as e:
                     print(f"[WARNING] No se pudo eliminar el archivo temporal de audio: {str(e)}")
@@ -273,3 +305,29 @@ class VideoEditReddit:
         except Exception as e:
             print(f"Error creating video: {str(e)}")
             raise
+
+    def cleanup_temp_files(self, output_path):
+        """Limpia archivos temporales generados durante el proceso"""
+        try:
+            # Limpieza de archivos temporales de moviepy
+            temp_files_patterns = [
+                str(output_path).replace('.mp4', 'TEMP_MPY_wvf_snd.mp4'),
+                '*.mpy',
+                '*.mp4_temp',
+                '*.mp4.temp'
+            ]
+
+            for pattern in temp_files_patterns:
+                if '*' in pattern:
+                    # Buscar archivos que coincidan con el patrón
+                    import glob
+                    for temp_file in glob.glob(pattern):
+                        if os.path.exists(temp_file):
+                            os.remove(temp_file)
+                else:
+                    # Eliminar archivo específico
+                    if os.path.exists(pattern):
+                        os.remove(pattern)
+
+        except Exception as e:
+            print(f"Error limpiando archivos temporales: {str(e)}")
