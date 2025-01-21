@@ -9,7 +9,7 @@ import gc
 import psutil
 
 class VideoEditReddit:
-    def __init__(self, video_background, tts_audio, font, font_color="white", music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
+    def __init__(self, video_background, tts_audio, font, font_color="white", words=4,upper=False, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
         """
         Initialize VideoEdit with necessary components
         
@@ -32,6 +32,8 @@ class VideoEditReddit:
         self.openai_api_key = openai_api_key
         self.font = font
         self.font_color = font_color
+        self.upper = upper
+        self.words = words
         
     def process_background(self, clip, duration):
         """
@@ -104,11 +106,13 @@ class VideoEditReddit:
     
         try:
 
-            def split_text(text):
+            def split_text(text, upper=False):
+                if upper:
+                    text = text.upper()
                 words = text.split()
                 return '\n'.join(' '.join(words[i:i+2]) for i in range(0, len(words), 2))
 
-            generator = lambda text: TextClip(font=self.font, text=split_text(text),
+            generator = lambda text: TextClip(font=self.font, text=split_text(text, upper=self.upper),
                                         font_size=90, color=self.font_color, text_align='center',      
                                         horizontal_align='center', 
                                         vertical_align='center',
@@ -158,6 +162,7 @@ class VideoEditReddit:
             subt = Subt(api_key=self.openai_api_key)
             self.subtitles_path = subt.generate_subtitles_whisper(
                 audio_path=self.tts_audio,
+                words_per_subtitle=self.words,
                 output_path=str(output_path)
             )
             
@@ -192,9 +197,9 @@ class VideoEditReddit:
             gc.collect()
 
             # Liberar memoria del sistema (opcional)
-            if psutil.POSIX:  # Solo en sistemas POSIX (Linux/Unix)
-                import resource
-                resource.setrlimit(resource.RLIMIT_AS, (resource.RLIM_CUR, resource.RLIM_MAX))
+            #if psutil.POSIX:  # Solo en sistemas POSIX (Linux/Unix)
+            #    import resource
+            #    resource.setrlimit(resource.RLIMIT_AS, (resource.RLIM_CUR, resource.RLIM_MAX))
 
         except Exception as e:
             print(f"Error durante la limpieza: {str(e)}")

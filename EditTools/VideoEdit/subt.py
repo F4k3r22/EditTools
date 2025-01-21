@@ -6,7 +6,7 @@ class Subt:
     def __init__(self, api_key):
         self.api_key = api_key
     
-    def convert_whisper_to_srt(self, whisper_response):
+    def convert_whisper_to_srt(self, whisper_response, words_per_subtitle=4):
         """Convierte la respuesta de Whisper a formato SRT con límite de 4 palabras por subtítulo"""
         def format_timestamp(seconds):
             hours = int(seconds // 3600)
@@ -40,7 +40,7 @@ class Subt:
             subtitle_index = 1
             current_segment = []
             current_start = None
-            words_per_subtitle = 4  # Límite de palabras por subtítulo
+            words_per_subtitle = words_per_subtitle  # Límite de palabras por subtítulo
             min_duration = 1.0  # Duración mínima en segundos
             
             print("[DEBUG] Iniciando procesamiento de palabras")
@@ -99,7 +99,7 @@ class Subt:
             print(f"[DEBUG] Estructura de la respuesta: {whisper_response}")
             raise
 
-    def generate_subtitles_whisper(self, audio_path, output_path=None):
+    def generate_subtitles_whisper(self, audio_path, words_per_subtitle=4, output_path=None):
         """Genera subtítulos usando la API de Whisper"""
         try:
             print(f"[DEBUG] Iniciando generación de subtítulos para {audio_path}")
@@ -125,7 +125,7 @@ class Subt:
                 )
             
             print("[DEBUG] Convirtiendo transcripción a formato SRT")
-            srt_content = self.convert_whisper_to_srt(transcription)
+            srt_content = self.convert_whisper_to_srt(transcription, words_per_subtitle=words_per_subtitle)
             
             if not srt_content:
                 raise ValueError("No se generó contenido SRT")
