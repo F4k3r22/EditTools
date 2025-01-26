@@ -119,7 +119,7 @@ class VideoEditReddit:
                                         margin=(0, 700),
                                         interline=4, 
                                         stroke_color='black',  # Color del contorno
-                                        stroke_width=2)   
+                                        stroke_width=10)   
         
             subtitles = SubtitlesClip(
                     self.subtitles_path,
@@ -197,9 +197,9 @@ class VideoEditReddit:
             gc.collect()
 
             # Liberar memoria del sistema (opcional)
-            #if psutil.POSIX:  # Solo en sistemas POSIX (Linux/Unix)
-            #    import resource
-            #    resource.setrlimit(resource.RLIMIT_AS, (resource.RLIM_CUR, resource.RLIM_MAX))
+            if psutil.POSIX:  # Solo en sistemas POSIX (Linux/Unix)
+                import resource
+                resource.setrlimit(resource.RLIMIT_AS, (resource.RLIM_CUR, resource.RLIM_MAX))
 
         except Exception as e:
             print(f"Error durante la limpieza: {str(e)}")
