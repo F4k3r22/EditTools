@@ -9,7 +9,7 @@ import gc
 import psutil
 
 class VideoEditReddit:
-    def __init__(self, video_background, tts_audio, font, font_color="white", words=4,upper=False, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
+    def __init__(self, video_background, tts_audio, font, text_size="medium", text_location="bottom", font_color="white", words=4,upper=False, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
         """
         Initialize VideoEdit with necessary components
         
@@ -34,6 +34,28 @@ class VideoEditReddit:
         self.font_color = font_color
         self.upper = upper
         self.words = words
+        self.font_size = text_size
+        self.font_location = text_location
+
+    def text_size(self, text_size):
+        """ Return the font size based on the text size """
+        if text_size == "small":
+            return 60
+        elif text_size == "medium":
+            return 90
+        elif text_size == "large":
+            return 120
+        else:
+            return 90
+        
+    def text_location(self, text_location):
+        """ Return the text location based on the text location """
+        if text_location == "top":
+            return 'top'
+        elif text_location == "bottom":
+            return 'center'
+        else:
+            return 'center'
         
     def process_background(self, clip, duration):
         """
@@ -113,9 +135,9 @@ class VideoEditReddit:
                 return '\n'.join(' '.join(words[i:i+2]) for i in range(0, len(words), 2))
 
             generator = lambda text: TextClip(font=self.font, text=split_text(text, upper=self.upper),
-                                        font_size=90, color=self.font_color, text_align='center',      
+                                        font_size=self.text_size(self.font_size), color=self.font_color, text_align='center',      
                                         horizontal_align='center', 
-                                        vertical_align='center',
+                                        vertical_align=self.text_location(self.font_location),
                                         margin=(0, 700),
                                         interline=4, 
                                         stroke_color='black',  # Color del contorno
