@@ -9,7 +9,7 @@ import gc
 import psutil
 
 class VideoEditReddit:
-    def __init__(self, video_background, tts_audio, font, text_size="medium", text_location="bottom", font_color="white", words=4,upper=False, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
+    def __init__(self, video_background, tts_audio, font, title=None, text_size="medium", text_location="bottom", font_color="white", words=4,upper=False, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
         """
         Initialize VideoEdit with necessary components
         
@@ -36,6 +36,7 @@ class VideoEditReddit:
         self.words = words
         self.font_size = text_size
         self.font_location = text_location
+        self.title = title
 
     def text_size(self, text_size):
         """ Return the font size based on the text size """
@@ -187,8 +188,43 @@ class VideoEditReddit:
                 words_per_subtitle=self.words,
                 output_path=str(output_path)
             )
+
+        # Si tenemos título, modificar el primer subtítulo
+            if self.title:
+                try:
+                    with open(self.subtitles_path, 'r', encoding='utf-8') as f:
+                        srt_lines = f.readlines()
+                
+                    modified_lines = []
+                    i = 0
+                    first_subtitle = True
+                
+                    while i < len(srt_lines):
+                        if srt_lines[i].strip().isdigit():  # Número de subtítulo
+                            modified_lines.append(srt_lines[i])  # Número
+                            modified_lines.append(srt_lines[i + 1])  # Timestamp
+                        
+                            if first_subtitle:
+                            # Para el primer subtítulo, reemplazar con un punto
+                                modified_lines.append(".\n")
+                                first_subtitle = False
+                            else:
+                                modified_lines.append(srt_lines[i + 2])  # Texto normal
+                            
+                            modified_lines.append(srt_lines[i + 3])  # Línea en blanco
+                            i += 4
+                        else:
+                            i += 1
+
+                # Escribir el archivo modificado
+                    with open(self.subtitles_path, 'w', encoding='utf-8') as f:
+                        f.writelines(modified_lines)
             
             # Verificar que el archivo se creó
+
+                except Exception as e:
+                    print(f"Error modificando subtítulos para el título: {str(e)}")
+            
             if not os.path.exists(self.subtitles_path):
                 raise FileNotFoundError(f"No se pudo generar el archivo de subtítulos en {self.subtitles_path}")
                 
