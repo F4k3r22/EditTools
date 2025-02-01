@@ -1,12 +1,13 @@
 from moviepy import *
 from moviepy.video.tools.subtitles import SubtitlesClip
 from moviepy.video.fx import Crop
-from moviepy.video.fx import CrossFadeIn, CrossFadeOut
+from moviepy.video.fx import CrossFadeIn, CrossFadeOut, Loop
 import os
 from pathlib import Path
 from .subt import Subt
 import gc
 import psutil
+import cv2
 
 class VideoEditReddit:
     def __init__(self, video_background, tts_audio, font, title=None, text_size="medium", text_location="bottom", font_color="white", words=4,upper=False, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
@@ -89,7 +90,9 @@ class VideoEditReddit:
         
         # Loop or trim video to match audio duration
         if clip.duration < duration:
-            clip = clip.loop(duration=duration)
+            loop_effect = Loop(duration=duration)
+            final_clip = loop_effect.apply(clip)
+            return final_clip
         else:
             clip = clip.with_duration(duration)
             
