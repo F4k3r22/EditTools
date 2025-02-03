@@ -6,16 +6,25 @@ class Subt:
     def __init__(self, api_key):
         self.api_key = api_key
     
-    def convert_whisper_to_srt(self, whisper_response, words_per_subtitle=4):
-        """Convierte la respuesta de Whisper a formato SRT con límite de 4 palabras por subtítulo"""
+    def convert_whisper_to_srt(self, whisper_response, words_per_subtitle=4, min_duration=None):
+        """
+        Convierte la respuesta de Whisper a formato SRT con precisión de milisegundos
+        
+        Args:
+            whisper_response: Respuesta de la API de Whisper
+            words_per_subtitle: Número de palabras por subtítulo (default: 4)
+            min_duration: Duración mínima en segundos (default: None para usar duración exacta)
+        """
         def format_timestamp(seconds):
+            # Mantiene precisión completa de milisegundos
             hours = int(seconds // 3600)
             minutes = int((seconds % 3600) // 60)
             secs = int(seconds % 60)
-            millis = int((seconds - int(seconds)) * 1000)
+            millis = round((seconds - int(seconds)) * 1000)  # Usa round para mejor precisión
             return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
         def clean_text(text):
+            text = text.strip()  # Elimina espacios extra al inicio y final
             text = text.capitalize()
             text = ' '.join(text.split())
             return text
@@ -40,8 +49,7 @@ class Subt:
             subtitle_index = 1
             current_segment = []
             current_start = None
-            words_per_subtitle = words_per_subtitle  # Límite de palabras por subtítulo
-            min_duration = 1.0  # Duración mínima en segundos
+            current_end = None
             
             print("[DEBUG] Iniciando procesamiento de palabras")
             
@@ -49,23 +57,25 @@ class Subt:
                 # Obtener tiempo de inicio si es el inicio de un segmento
                 if current_start is None:
                     current_start = float(word.get('start', 0))
+                    current_end = float(word.get('end', 0))
 
                 # Obtener el texto de la palabra
-                word_text = word.get('word', '')
+                word_text = word.get('word', '').strip()
                 if not word_text:
                     continue
 
                 current_segment.append(word_text)
+                current_end = float(word.get('end', 0))  # Actualizar el tiempo final
 
                 # Determinar si debemos crear un nuevo segmento
                 should_split = False
                 
-                # Split cuando alcanzamos 4 palabras
+                # Split cuando alcanzamos el límite de palabras
                 if len(current_segment) >= words_per_subtitle:
                     should_split = True
                 
-                # Split en puntuación importante
-                if any(punct in word_text for punct in '.!?'):
+                # Split en puntuación importante (incluyendo comas para pausas naturales)
+                if any(punct in word_text for punct in '.!?,'):
                     should_split = True
                 
                 # Split al final
@@ -73,16 +83,22 @@ class Subt:
                     should_split = True
 
                 if should_split and current_segment:
-                    end_time = float(word.get('end', 0))
-                    # Asegurar duración mínima
-                    if end_time - current_start < min_duration:
-                        end_time = current_start + min_duration
+                    # Calcular duración y ajustar si es necesario
+                    duration = current_end - current_start
+                    
+                    # Aplicar duración mínima solo si está especificada
+                    if min_duration is not None and duration < min_duration:
+                        current_end = current_start + min_duration
 
                     subtitle_text = clean_text(' '.join(current_segment))
                     
+                    # Asegurar que no haya superposición con el subtítulo anterior
+                    if srt_content and current_start < float(srt_content[-1].split('\n')[1].split(' --> ')[1].replace(',', '.').split(':')[-1]):
+                        current_start = float(srt_content[-1].split('\n')[1].split(' --> ')[1].replace(',', '.').split(':')[-1])
+                    
                     srt_entry = (
                         f"{subtitle_index}\n"
-                        f"{format_timestamp(current_start)} --> {format_timestamp(end_time)}\n"
+                        f"{format_timestamp(current_start)} --> {format_timestamp(current_end)}\n"
                         f"{subtitle_text}\n\n"
                     )
                     
@@ -90,6 +106,7 @@ class Subt:
                     subtitle_index += 1
                     current_segment = []
                     current_start = None
+                    current_end = None
 
             print(f"[DEBUG] Generados {subtitle_index-1} subtítulos")
             return ''.join(srt_content)
@@ -99,8 +116,16 @@ class Subt:
             print(f"[DEBUG] Estructura de la respuesta: {whisper_response}")
             raise
 
-    def generate_subtitles_whisper(self, audio_path, words_per_subtitle=4, output_path=None):
-        """Genera subtítulos usando la API de Whisper"""
+    def generate_subtitles_whisper(self, audio_path, words_per_subtitle=4, min_duration=None, output_path=None):
+        """
+        Genera subtítulos usando la API de Whisper
+        
+        Args:
+            audio_path: Ruta al archivo de audio
+            words_per_subtitle: Número de palabras por subtítulo
+            min_duration: Duración mínima en segundos (None para usar duración exacta)
+            output_path: Ruta de salida para el archivo SRT
+        """
         try:
             print(f"[DEBUG] Iniciando generación de subtítulos para {audio_path}")
             client = OpenAI(api_key=self.api_key)
@@ -125,7 +150,11 @@ class Subt:
                 )
             
             print("[DEBUG] Convirtiendo transcripción a formato SRT")
-            srt_content = self.convert_whisper_to_srt(transcription, words_per_subtitle=words_per_subtitle)
+            srt_content = self.convert_whisper_to_srt(
+                transcription, 
+                words_per_subtitle=words_per_subtitle,
+                min_duration=min_duration
+            )
             
             if not srt_content:
                 raise ValueError("No se generó contenido SRT")
