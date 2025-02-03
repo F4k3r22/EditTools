@@ -1,6 +1,6 @@
 [project]
 name = "EditTools"
-version = "0.2.8.5"
+version = "0.2.9"
 description = "Paquete auxiliar de EditTools"
 authors = [
     { name = "Rivera.ai/Fredy Rivera", email = "riveraaai200678@gmail.com" }

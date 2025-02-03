@@ -103,16 +103,16 @@ class VideoEditReddit:
             return None
 
         img = ImageClip(self.image_overlay)
-        img = img.resized(width=self.output_size[0] * 0.5)
-        img = img.with_position(("center", 700))
+        img = img.resized(width=self.output_size[0] * 0.8)
+        img = img.with_position(("center", 500))
         img = img.with_duration(min(self.overlay_duration, duration))
     
         # Aplicar los efectos de crossfade
-        effects = [
-            CrossFadeIn(duration=self.fade_duration),
-            CrossFadeOut(duration=self.fade_duration)
-        ]
-        img = img.with_effects(effects)
+        #effects = [
+        #    CrossFadeIn(duration=self.fade_duration),
+        #    CrossFadeOut(duration=self.fade_duration)
+        #]
+        #img = img.with_effects(effects)
             
         return img
 
