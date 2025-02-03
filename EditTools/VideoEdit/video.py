@@ -7,7 +7,6 @@ from pathlib import Path
 from .subt import Subt
 import gc
 import psutil
-import cv2
 
 class VideoEditReddit:
     def __init__(self, video_background, tts_audio, font, title=None, text_size="medium", text_location="bottom", font_color="white", words=4,upper=False, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
@@ -139,14 +138,14 @@ class VideoEditReddit:
                 return '\n'.join(' '.join(words[i:i+2]) for i in range(0, len(words), 2))
 
             generator = lambda text: TextClip(font=self.font, text=split_text(text, upper=self.upper),
-                                        font_size=self.text_size(self.font_size), color=self.font_color, text_align='center',      
+                                        font_size=self.text_size(self.font_size), color=(255,255,255,0) if text.strip() == '.' else self.font_color, text_align='center',      
                                         horizontal_align='center', 
                                         vertical_align=self.text_location(self.font_location),
                                         margin=(0, 700),
                                         interline=4, 
-                                        stroke_color='black',  # Color del contorno
+                                        stroke_color='black' if text.strip() != '.' else (0,0,0,0),  # Color del contorno
                                         stroke_width=10)   
-        
+                        
             subtitles = SubtitlesClip(
                     self.subtitles_path,
                     make_textclip=generator,

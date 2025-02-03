@@ -86,7 +86,7 @@ def EditImage(nickname, titulo_principal, input_image=None, output_path=None, co
     # Dibujar cada línea del título
     for linea in lineas:
         ancho_texto = dibujo.textlength(linea, font=fuente_titulo)
-        x = (imagen.width - ancho_texto) // 2 - 100
+        x = (imagen.width - ancho_texto) // 2 - 75
         dibujo.text((x, y), linea, font=fuente_titulo, fill='black')
         y += espacio_entre_lineas
     
