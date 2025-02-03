@@ -132,9 +132,20 @@ class VideoEditReddit:
         try:
 
             def split_text(text, upper=False):
+                words = text.split()    
                 if upper:
                     text = text.upper()
-                words = text.split()
+                else:
+        # Si es el punto (título), dejarlo y capitalizar la siguiente palabra
+                    if words[0] == '.':
+                        if len(words) > 1:
+                # Mantener el punto y capitalizar solo la siguiente palabra
+                            words = ['.'] + [words[1].capitalize()] + [w.lower() for w in words[2:]]
+                    else:
+            # Si no hay punto, convertir todo a minúsculas
+                            words = [w.lower() for w in words]
+    
+    # Unir palabras en grupos de 2 con salto de línea
                 return '\n'.join(' '.join(words[i:i+2]) for i in range(0, len(words), 2))
 
             generator = lambda text: TextClip(font=self.font, text=split_text(text, upper=self.upper),
