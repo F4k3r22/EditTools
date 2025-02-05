@@ -9,7 +9,7 @@ import gc
 import psutil
 
 class VideoEditReddit:
-    def __init__(self, video_background, tts_audio, font, title=None, text_size="medium", text_location="bottom", font_color="white", words=4,upper=False, Final_screen=False, Text_final=None, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
+    def __init__(self, video_background, tts_audio, font, title=None, text_size="medium", text_location="bottom", font_color="white", words=4,upper=False, lower=False, Final_screen=False, Text_final=None, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
         """
         Initialize VideoEdit with necessary components
         
@@ -33,6 +33,7 @@ class VideoEditReddit:
         self.font = font
         self.font_color = font_color
         self.upper = upper
+        self.lower = lower
         self.words = words
         self.font_size = text_size
         self.font_location = text_location
@@ -135,24 +136,32 @@ class VideoEditReddit:
     
         try:
 
-            def split_text(text, upper=False):
-                words = text.split()    
-                if upper:
-                    text = text.upper()
-                else:
-        # Si es el punto (título), dejarlo y capitalizar la siguiente palabra
-                    if words[0] == '.':
-                        if len(words) > 1:
-                # Mantener el punto y capitalizar solo la siguiente palabra
-                            words = ['.'] + [words[1].capitalize()] + [w.lower() for w in words[2:]]
-                    else:
-            # Si no hay punto, convertir todo a minúsculas
-                            words = [w.lower() for w in words]
+            def split_text(text):
+                words = text.split()
     
-    # Unir palabras en grupos de 2 con salto de línea
-                return '\n'.join(' '.join(words[i:i+2]) for i in range(0, len(words), 2))
+                # Si no hay palabras, retornar texto vacío
+                if not words:
+                    return ''
+        
+                # Primero manejar el caso especial del punto
+                if words[0] == '.':
+                    if len(words) > 1:
+                        processed_words = ['.'] + [words[1].capitalize()] + [w.lower() for w in words[2:]]
+                    else:
+                        processed_words = ['.']
+                # Luego manejar las transformaciones de caso
+                elif self.upper:
+                    processed_words = [w.upper() for w in words]
+                elif self.lower:
+                    processed_words = [w.lower() for w in words]
+                else:
+                # Por defecto, primera palabra capitalizada, resto en minúsculas
+                    processed_words = [words[0].capitalize()] + [w.lower() for w in words[1:]]
+    
+                # Unir palabras en grupos de 2 con salto de línea
+                return '\n'.join(' '.join(processed_words[i:i+2]) for i in range(0, len(processed_words), 2))
 
-            generator = lambda text: TextClip(font=self.font, text=split_text(text, upper=self.upper),
+            generator = lambda text: TextClip(font=self.font, text=split_text(text),
                                         font_size=self.text_size(self.font_size), color=(255,255,255,0) if text.strip() == '.' else self.font_color, text_align='center',      
                                         horizontal_align='center', 
                                         vertical_align=self.text_location(self.font_location),
