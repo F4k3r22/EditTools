@@ -9,7 +9,7 @@ import gc
 import psutil
 
 class VideoEditReddit:
-    def __init__(self, video_background, tts_audio, font, title=None, text_size="medium", text_location="bottom", font_color="white", words=4,upper=False, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
+    def __init__(self, video_background, tts_audio, font, title=None, text_size="medium", text_location="bottom", font_color="white", words=4,upper=False, Final_screen=False, Text_final=None, music_audio=None, image_overlay=None, subtitles_path=None, overlay_duration=3, openai_api_key=None):
         """
         Initialize VideoEdit with necessary components
         
@@ -37,6 +37,8 @@ class VideoEditReddit:
         self.font_size = text_size
         self.font_location = text_location
         self.title = title
+        self.Final_screen = Final_screen
+        self.Text_final = Text_final
 
     def text_size(self, text_size):
         """ Return the font size based on the text size """
@@ -86,6 +88,8 @@ class VideoEditReddit:
         
         # Resize to output dimensions
         clip = clip.resized(self.output_size)
+
+        total_duration = duration + (5 if self.Final_screen else 0)
         
         # Loop or trim video to match audio duration
         if clip.duration < duration:
@@ -93,7 +97,7 @@ class VideoEditReddit:
             final_clip = loop_effect.apply(clip)
             return final_clip
         else:
-            clip = clip.with_duration(duration)
+            clip = clip.with_duration(total_duration)
             
         return clip
 
@@ -195,7 +199,7 @@ class VideoEditReddit:
             print(f"Generando subtítulos en: {output_path}")
             
             # Generar subtítulos
-            subt = Subt(api_key=self.openai_api_key)
+            subt = Subt(api_key=self.openai_api_key, Final_screen=self.Final_screen, Text_final=self.Text_final)
             self.subtitles_path = subt.generate_subtitles_whisper(
                 audio_path=self.tts_audio,
                 words_per_subtitle=self.words,
@@ -277,81 +281,99 @@ class VideoEditReddit:
 
     def mix_audio(self, tts_duration):
         """
-        Mix TTS and background music if provided
-        
-        Args:
-            tts_duration: Duration of the TTS audio in seconds
+            Mix TTS and background music if provided
+    
+            Args:
+                tts_duration: Duration of the TTS audio in seconds
         """
         tts_audio = AudioFileClip(self.tts_audio)
-    
+        target_duration = tts_duration + (5 if self.Final_screen else 0)
+
         if self.music_audio:
             bg_music = AudioFileClip(self.music_audio)
-            # Create a custom frame function that multiplies the original audio by 0.3
+        # Create a custom frame function that multiplies the original audio by 0.3
             original_frame_func = bg_music.frame_function
             bg_music.frame_function = lambda t: original_frame_func(t) * 0.1
         
-            # Loop background music if shorter than TTS
-            if bg_music.duration < tts_duration:
+        # Loop background music if shorter than target duration
+            if bg_music.duration < target_duration:
                 original_bg_func = bg_music.frame_function
                 bg_music.frame_function = lambda t: original_bg_func(t % bg_music.duration)
-                bg_music.duration = tts_duration
-                bg_music.end = tts_duration
+                bg_music.duration = target_duration
+                bg_music.end = target_duration
             else:
-                # Trim background music if longer than TTS
-                bg_music = bg_music.with_duration(tts_duration)
-            
-            final_audio = CompositeAudioClip([tts_audio, bg_music])
+            # Trim background music if longer than target duration
+                bg_music = bg_music.with_duration(target_duration)
+
+        # Extend TTS audio with silence only for the portion after TTS ends
+            if self.Final_screen:
+                silence = AudioClip(lambda t: 0, duration=5)
+                tts_extended = CompositeAudioClip([
+                    tts_audio,
+                    silence.with_start(tts_duration)
+                ])
+                final_audio = CompositeAudioClip([
+                    tts_extended.with_duration(target_duration),
+                    bg_music.with_duration(target_duration)
+                ])
+            else:
+                final_audio = CompositeAudioClip([tts_audio, bg_music])
         else:
-            final_audio = tts_audio
-        
+            if self.Final_screen:
+                silence = AudioClip(lambda t: 0, duration=5)
+                final_audio = CompositeAudioClip([
+                    tts_audio,
+                    silence.with_start(tts_duration)
+                ])
+            else:
+                final_audio = tts_audio
+    
         return final_audio
 
     def create_video(self, output_path="output.mp4", generate_subs=True):
-        """Create the final video with all components"""
         try:
             print("[DEBUG] Iniciando creación de video...")
             output_path = Path(output_path)
             output_dir = output_path.parent
             output_dir.mkdir(parents=True, exist_ok=True)
 
-            print(f"[DEBUG] Generando subtítulos: {generate_subs}")
             if generate_subs:
                 print("[DEBUG] Intentando generar subtítulos...")
                 srt_path = output_path.with_suffix('.srt')
-                print(f"[DEBUG] Ruta de subtítulos: {srt_path}")
                 self.generate_subtitles(output_path=srt_path)
-        
+    
             print("[DEBUG] Procesando audio TTS...")
             tts_audio = AudioFileClip(self.tts_audio)
             tts_duration = tts_audio.duration
-        
+            total_duration = tts_duration + (5 if self.Final_screen else 0)
+    
             print("[DEBUG] Procesando video de fondo...")
             video = VideoFileClip(self.video_background)
-            video = self.process_background(video, tts_duration)
-        
+            video = self.process_background(video, tts_duration)  # process_background ya maneja la duración total
+    
             video_components = [video]
-        
-            overlay = self.create_overlay(tts_duration)
+    
+            overlay = self.create_overlay(total_duration)
             if overlay:
                 print("[DEBUG] Añadiendo overlay...")
                 video_components.append(overlay)
-        
+    
             if self.subtitles_path and os.path.exists(self.subtitles_path):
-                print(f"[DEBUG] Creando clips de subtítulos desde: {self.subtitles_path}")
-                subtitles = self.create_subtitle_clips(duration=tts_duration)
+                print("[DEBUG] Creando clips de subtítulos...")
+                subtitles = self.create_subtitle_clips(duration=total_duration)
                 if subtitles:
                     print("[DEBUG] Añadiendo subtítulos al video...")
                     subtitles = subtitles.with_position(('center', 'bottom'))
                     video_components.append(subtitles)
-        
+    
             print("[DEBUG] Componiendo video final...")
             final_video = CompositeVideoClip(video_components, size=self.output_size)
-            final_video = final_video.with_duration(tts_duration)
-        
+            final_video = final_video.with_duration(total_duration)
+    
             print("[DEBUG] Mezclando audio...")
             final_audio = self.mix_audio(tts_duration)
             final_video = final_video.with_audio(final_audio)
-        
+    
             print(f"[DEBUG] Escribiendo video final en: {output_path}")
             final_video.write_videofile(
                 str(output_path),
@@ -360,7 +382,7 @@ class VideoEditReddit:
                 codec='libx264',
                 audio_codec='aac',
             )
-        
+    
         # Cleanup
             final_video.close()
             video.close()
@@ -368,16 +390,9 @@ class VideoEditReddit:
             if self.music_audio:
                 final_audio.close()
 
-            temp_audio_file = str(output_path).replace('.mp4', 'TEMP_MPY_wvf_snd.mp4')
-            if os.path.exists(temp_audio_file):
-                try:
-                    os.remove(temp_audio_file)
-                    self.cleanup_temp_files(output_path)
-                    self.cleanup()  # Llamar a la limpieza explícitamente
-                    print(f"[DEBUG] Archivo temporal de audio eliminado: {temp_audio_file}")
-                except Exception as e:
-                    print(f"[WARNING] No se pudo eliminar el archivo temporal de audio: {str(e)}")
-                
+            self.cleanup_temp_files(output_path)
+            self.cleanup()
+        
         except Exception as e:
             print(f"Error creating video: {str(e)}")
             raise

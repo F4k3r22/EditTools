@@ -1,1 +1,1 @@
-from .edit import EditImage
+from .edit import EditImage, EditImageFaceBook, EditImageX
