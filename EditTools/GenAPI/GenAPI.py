@@ -28,10 +28,10 @@ class TextGen:
     def GenByTopic(self, topic, system_prompt):
         from openai import OpenAI
 
-        clien = OpenAI(api_key=self.API_KEY)
+        client = OpenAI(api_key=self.API_KEY)
 
         try:
-            response = clien.chat.completions.create(
+            response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_prompt},

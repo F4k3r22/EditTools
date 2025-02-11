@@ -35,7 +35,7 @@ NARRATIVE STYLE:
 - End with an exaggerated epiphany or realization
 
 STRUCTURAL RULES:
-- Maximum 250 words total
+- Maximum 100 words total
 - Sentences should be punchy and TikTok-ready (5-8 seconds each)
 - Include natural breaks for dramatic pauses
 - Build a conspiratorial or obsessive tone
@@ -52,7 +52,7 @@ TECHNICAL REQUIREMENTS:
 - Output in clean JSON format
 - Fields:
     "title": catchy, clickbait-style title (max 60 chars)
-    "text": full narrative text (max 250 words)
+    "text": full narrative text (max 100 words)
     "tags": list of relevant internet subculture tags
 
 TONE:
