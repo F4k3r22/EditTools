@@ -1,6 +1,6 @@
 class TextGen:
     """ Class for generating content using GPT-4o-mini model from OpenAI API """
-    def __init__(self, API_KEY, system_prompt, text):
+    def __init__(self, API_KEY, system_prompt=None, text=None):
         self.API_KEY = API_KEY
         self.system_prompt = system_prompt  
         self.text = text  
@@ -23,6 +23,26 @@ class TextGen:
             return response
         except Exception as e:
             print(f"Error en el TextGen: {str(e)}")
+            raise
+
+    def GenByTopic(self, topic, system_prompt):
+        from openai import OpenAI
+
+        clien = OpenAI(api_key=self.API_KEY)
+
+        try:
+            response = clien.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": topic}
+                ],
+                max_tokens=16384,
+                response_format={"type": "json_object"}
+            )
+            return response
+        except Exception as e:
+            print(f"Error en el GenByTopic: {str(e)}")
             raise
 
 class ClientTTS:
